@@ -1,0 +1,46 @@
+.TH TINYROUTE 1 "January 20, 2017" "tinyroute" "TinyRoute"
+
+.SH NAME
+tinyroute \- load XML file and update settings based on commands
+
+.SH SYNOPSIS
+.B tinyroute\fR \fIfile\fR [ \fIoptions\fR ]
+
+.SH Description
+
+\fBtinyroute\fR can load an XML file describing paths and ALSA mixer values, then update them based on commands
+Options can be used to specify the ALSA card
+
+.SH OPTIONS
+
+.TP
+\fB\-D, --card\fR \fIcard\fR
+Card number of the PCM.
+The default is 0.
+
+
+.SH SIGNALS
+
+Tinyroute just exits
+
+.SH EXAMPLES
+
+.TP
+\fBtinyplay mixer_path.xml\fR
+Load mixer_path.xml file and apply configurations
+
+.TP
+\fBtinyplay mixer_path.xml -D 1
+Load mixer_path.xml file and apply configurations for card #1
+
+.SH BUGS
+
+Please report bugs to https://github.com/tinyroute/tinyroute/issues.
+
+.SH SEE ALSO
+
+.SH AUTHORS
+Pierre Bossart, based on AOSP contributions from Simon Wilson
+.P
+For a complete list of authors, visit the project page at https://github.com/tinyroute/tinyroute.
+
