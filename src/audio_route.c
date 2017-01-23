@@ -27,6 +27,7 @@
 #ifdef ANDROID
 #include <cutils/log.h>
 #else
+#define ALOGV printf
 #define ALOGE printf
 #define LOG_ALWAYS_FATAL printf
 #endif
@@ -523,6 +524,94 @@ static void end_tag(void *data, const XML_Char *tag_name)
     state->level--;
 }
 
+static int parse_XML(XML_Parser parser, FILE *file)
+{
+    int bytes_read;
+    void *buf;
+
+    if (file == NULL)
+	goto err_parse;
+
+    for (;;) {
+        buf = XML_GetBuffer(parser, BUF_SIZE);
+        if (buf == NULL)
+            goto err_parse;
+
+        bytes_read = fread(buf, 1, BUF_SIZE, file);
+        if (bytes_read < 0)
+            goto err_parse;
+
+        if (XML_ParseBuffer(parser, bytes_read,
+                            bytes_read == 0) == XML_STATUS_ERROR) {
+            ALOGE("Error in mixer xml (%s)", MIXER_XML_PATH);
+            goto err_parse;
+        }
+
+        if (bytes_read == 0)
+            break;
+    }
+    return 0;
+
+err_parse:
+    return 1;
+}
+
+static int ext_handler(XML_Parser parser,
+		       const XML_Char *context,
+		       const XML_Char *base,
+		       const XML_Char *systemId,
+		       const XML_Char *publicId)
+{
+    XML_Parser ext_parser;
+    struct config_parse_state ext_state;
+    struct config_parse_state *state;
+    FILE *file;
+    int status;
+
+    ALOGV("Parsing external entity base %s systemId %s publicId %s \n",
+	  base, systemId, publicId);
+
+    /* get audio_route pointer */
+    state = XML_GetUserData(parser);
+    if (state == NULL)
+	return XML_STATUS_ERROR;
+
+    ext_parser =  XML_ExternalEntityParserCreate(parser, context, NULL);
+    if (!ext_parser) {
+	ALOGE("Failed to create external XML parser");
+	goto err_parser_create;
+    }
+
+    /* initialize state */
+    memset(&ext_state, 0, sizeof(ext_state));
+    ext_state.ar = state->ar;  /* same audio route between primary and ext parser */
+    XML_SetUserData(ext_parser, &ext_state);
+    XML_SetElementHandler(ext_parser, start_tag, end_tag);
+
+    file = fopen(systemId, "r");
+
+    if (file == NULL) {
+	ALOGE("Failed to open %s", systemId);
+	goto err_fopen;
+    }
+
+    status = parse_XML(ext_parser, file);
+    fclose(file);
+    XML_ParserFree(ext_parser);
+
+    if (status ==0) {
+	return XML_STATUS_OK;
+    }
+
+    ALOGE("parsing of external entity failed");
+
+err_fopen:
+    XML_ParserFree(ext_parser);
+err_parser_create:
+    return XML_STATUS_ERROR;
+
+}
+
 static int alloc_mixer_state(struct audio_route *ar)
 {
     unsigned int i;
@@ -805,8 +894,6 @@ struct audio_route *audio_route_init(unsigned int card, const char *xml_path)
     struct config_parse_state state;
     XML_Parser parser;
     FILE *file;
-    int bytes_read;
-    void *buf;
     struct audio_route *ar;
 
     ar = calloc(1, sizeof(struct audio_route));
@@ -849,23 +936,10 @@ struct audio_route *audio_route_init(unsigned int card, const char *xml_path)
     XML_SetUserData(parser, &state);
     XML_SetElementHandler(parser, start_tag, end_tag);
 
-    for (;;) {
-        buf = XML_GetBuffer(parser, BUF_SIZE);
-        if (buf == NULL)
-            goto err_parse;
+    XML_SetExternalEntityRefHandler(parser, ext_handler);
 
-        bytes_read = fread(buf, 1, BUF_SIZE, file);
-        if (bytes_read < 0)
-            goto err_parse;
-
-        if (XML_ParseBuffer(parser, bytes_read,
-                            bytes_read == 0) == XML_STATUS_ERROR) {
-            ALOGE("Error in mixer xml (%s)", MIXER_XML_PATH);
-            goto err_parse;
-        }
-
-        if (bytes_read == 0)
-            break;
+    if (parse_XML(parser, file)) {
+	goto err_parse;
     }
 
     /* apply the initial mixer values, and save them so we can reset the
