@@ -32,61 +32,12 @@
 #endif
 
 #include <tinyalsa/asoundlib.h>
+#include "audio_route_private.h"
 
 #define BUF_SIZE 1024
 #define MIXER_XML_PATH "/system/etc/mixer_paths.xml"
 #define INITIAL_MIXER_PATH_SIZE 8
 
-union ctl_values {
-    int *enumerated;
-    long *integer;
-    void *ptr;
-    unsigned char *bytes;
-};
-
-struct mixer_state {
-    struct mixer_ctl *ctl;
-    unsigned int num_values;
-    union ctl_values old_value;
-    union ctl_values new_value;
-    union ctl_values reset_value;
-};
-
-struct mixer_setting {
-    unsigned int ctl_index;
-    unsigned int num_values;
-    unsigned int type;
-    union ctl_values value;
-};
-
-struct mixer_value {
-    unsigned int ctl_index;
-    int index;
-    long value;
-};
-
-struct mixer_path {
-    char *name;
-    unsigned int size;
-    unsigned int length;
-    struct mixer_setting *setting;
-};
-
-struct audio_route {
-    struct mixer *mixer;
-    unsigned int num_mixer_ctls;
-    struct mixer_state *mixer_state;
-
-    unsigned int mixer_path_size;
-    unsigned int num_mixer_paths;
-    struct mixer_path *mixer_path;
-};
-
-struct config_parse_state {
-    struct audio_route *ar;
-    struct mixer_path *path;
-    int level;
-};
 
 /* path functions */
 

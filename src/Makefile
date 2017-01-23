@@ -21,7 +21,7 @@ OBJECTS = audio_route.o
 .PHONY: all
 all: libtinyroute.a libtinyroute.so
 
-audio_route.o: audio_route.c audio_route.h
+audio_route.o: audio_route.c audio_route.h audio_route_private.h
 
 libtinyroute.a: $(OBJECTS)
 	$(AR) $(ARFLAGS) $@ $^
