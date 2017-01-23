@@ -24,7 +24,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef ANDROID
 #include <cutils/log.h>
+#else
+#define ALOGE printf
+#define LOG_ALWAYS_FATAL printf
+#endif
 
 #include <tinyalsa/asoundlib.h>
 
